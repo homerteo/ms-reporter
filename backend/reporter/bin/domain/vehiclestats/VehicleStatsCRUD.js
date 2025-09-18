@@ -76,11 +76,19 @@ class VehicleStatsCRUD {
    */
   getVehicleStats$({ args }, authToken) {
     const { id, organizationId } = args;
+    
+    // Si el ID es 'fleet_stats', devolver las estadísticas de flota
+    if (id === 'fleet_stats') {
+      return VehicleStatsDA.getFleetStatistics$().pipe(
+        mergeMap(rawResponse => CqrsResponseHelper.buildSuccessResponse$(rawResponse)),
+        catchError(err => iif(() => err.name === 'MongoTimeoutError', throwError(err), CqrsResponseHelper.handleError$(err)))
+      );
+    }
+    
     return VehicleStatsDA.getVehicleStats$(id, organizationId).pipe(
       mergeMap(rawResponse => CqrsResponseHelper.buildSuccessResponse$(rawResponse)),
       catchError(err => iif(() => err.name === 'MongoTimeoutError', throwError(err), CqrsResponseHelper.handleError$(err)))
     );
-
   }
 
 

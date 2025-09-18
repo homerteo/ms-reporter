@@ -18,6 +18,18 @@ type ReporterVehicleStats {
   active: Boolean!  
   "object metadata"
   metadata: ReporterVehicleStatsMetadata
+  "Total number of vehicles in fleet (when id is 'fleet_stats')"
+  totalVehicles: Int
+  "Vehicles grouped by type (when id is 'fleet_stats')"
+  vehiclesByType: String
+  "Vehicles grouped by decade (when id is 'fleet_stats')"
+  vehiclesByDecade: String
+  "Vehicles grouped by speed class (when id is 'fleet_stats')"
+  vehiclesBySpeedClass: String
+  "Horsepower statistics (when id is 'fleet_stats')"
+  hpStats: String
+  "Last time statistics were updated (when id is 'fleet_stats')"
+  lastUpdated: String
 }
 
 type ReporterVehicleStatsMetadata {
