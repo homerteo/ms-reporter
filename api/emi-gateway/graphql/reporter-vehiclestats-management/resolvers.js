@@ -15,6 +15,9 @@ const CONTEXT_NAME = "reporter";
 const READ_ROLES = ["VEHICLESTATS_READ"];
 const WRITE_ROLES = ["VEHICLESTATS_WRITE"];
 
+// Development bypass for authentication
+const DISABLE_AUTH_FOR_DEVELOPMENT = process.env.DISABLE_AUTH_FOR_DEVELOPMENT === 'true';
+
 function getResponseFromBackEnd$(response) {
     return of(response)
         .pipe(
@@ -44,6 +47,31 @@ function getResponseFromBackEnd$(response) {
  * @param {number} timeout timeout for query or mutation in milliseconds
  */
 function sendToBackEndHandler$(root, OperationArguments, context, requiredRoles, operationType, aggregateName, methodName, timeout = 2000) {
+    // Bypass authentication for development
+    if (DISABLE_AUTH_FOR_DEVELOPMENT) {
+        console.log(`🔧 Development mode: Bypassing authentication for ${methodName}`);
+        
+        // Create a mock JWT context for development
+        const mockContext = {
+            authToken: {
+                realm_access: { roles: [...READ_ROLES, ...WRITE_ROLES] },
+                preferred_username: 'dev-user'
+            },
+            encodedToken: 'mock-jwt-token-for-development'
+        };
+        
+        return broker.forwardAndGetReply$(
+            aggregateName,
+            `emigateway.graphql.${operationType}.${methodName}`,
+            { root, args: OperationArguments, jwt: mockContext.encodedToken },
+            timeout
+        ).pipe(
+            catchError(err => handleError$(err, methodName)),
+            mergeMap(response => getResponseFromBackEnd$(response))
+        );
+    }
+    
+    // Normal authentication flow for production
     return RoleValidator.checkPermissions$(
         context.authToken.realm_access.roles,
         CONTEXT_NAME,
@@ -75,6 +103,10 @@ module.exports = {
             return sendToBackEndHandler$(root, args, context, READ_ROLES, 'query', 'VehicleStats', 'ReporterVehicleStatsListing').toPromise();
         },
         ReporterVehicleStats(root, args, context) {
+            // Handle fleet_stats ID case for fleet statistics queries
+            if (args.id === 'fleet_stats') {
+                return sendToBackEndHandler$(root, args, context, READ_ROLES, 'query', 'VehicleStats', 'ReporterFleetStatistics').toPromise();
+            }
             return sendToBackEndHandler$(root, args, context, READ_ROLES, 'query', 'VehicleStats', 'ReporterVehicleStats').toPromise();
         }
     },
@@ -97,6 +129,12 @@ module.exports = {
         ReporterVehicleStatsModified: {
             subscribe: withFilter(
                 (payload, variables, context, info) => {
+                    // Bypass authentication for development
+                    if (DISABLE_AUTH_FOR_DEVELOPMENT) {
+                        console.log(`🔧 Development mode: Bypassing subscription authentication`);
+                        return pubsub.asyncIterator("ReporterVehicleStatsModified");
+                    }
+                    
                     //Checks the roles of the user, if the user does not have at least one of the required roles, an error will be thrown
                     RoleValidator.checkAndThrowError(
                         context.authToken.realm_access.roles,

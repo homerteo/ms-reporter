@@ -19,11 +19,29 @@ export const MicroFrontendConfig = {
             component: React.lazy(() => import('./vehiclestatss/VehicleStatss'))
         },
         {
+            path: '/vehiclestats-mng/dashboard',
+            component: React.lazy(() => import('./dashboard/FleetDashboard'))
+        },
+        {
             path: '/vehiclestats-mng',
-            component: () => <Redirect to="/vehiclestats-mng/vehiclestatss" />
+            component: () => <Redirect to="/vehiclestats-mng/dashboard" />
         }
     ],
     navigationConfig: [
+        {
+            'id': 'analytics',
+            'type': 'collapse',
+            'icon': 'dashboard',
+            'priority': 50,
+            children: [{
+                'id': 'fleet-dashboard',
+                'type': 'item',
+                'icon': 'analytics',
+                'url': '/vehiclestats-mng/dashboard',
+                'priority': 1000,
+                auth
+            }]
+        },
         {
             'id': 'settings',
             'type': 'collapse',
@@ -33,7 +51,7 @@ export const MicroFrontendConfig = {
                 'id': 'reporter-vehiclestats-management',
                 'type': 'item',
                 'icon': 'business',
-                'url': '/vehiclestats-mng',
+                'url': '/vehiclestats-mng/vehiclestatss',
                 'priority': 2000,
                 auth
             }]

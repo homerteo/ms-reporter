@@ -34,9 +34,9 @@ type ReporterVehicleStats {
 
 type ReporterVehicleStatsMetadata {
     createdBy: String
-		createdAt: BigInt
-		updatedBy: String
-		updatedAt: BigInt
+        createdAt: String
+        updatedBy: String
+        updatedAt: String
 }
 
 type ReporterVehicleStatsListing {
@@ -86,7 +86,7 @@ type Query {
   "Get VehicleStatss filtered "
   ReporterVehicleStatsListing(filterInput: ReporterVehicleStatsFilterInput, paginationInput: ReporterVehicleStatsPaginationInput, sortInput: ReporterVehicleStatsSortInput): ReporterVehicleStatsListing
   "Get VehicleStats by its id"
-  ReporterVehicleStats(id: ID!, organizationId: String!): ReporterVehicleStats
+  ReporterVehicleStats(id: ID!, organizationId: String): ReporterVehicleStats
 }
 
 type Mutation {

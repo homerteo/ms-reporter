@@ -1,7 +1,27 @@
 export default {
   navigation: {
+    'analytics': 'Analíticas',
+    'fleet-dashboard': 'Dashboard de Flota',
     'settings': 'Configuraciones',
     'reporter-vehiclestats-management': 'VehicleStatss',
+  },
+  dashboard: {
+    title: 'Dashboard de Análisis de Flota',
+    vehicle_types: 'Vehículos por Tipo',
+    vehicle_decades: 'Vehículos por Década',
+    horsepower_stats: 'Potencia (HP)',
+    speed_classification: 'Clasificación por Velocidad',
+    minimum: 'Mínimo',
+    maximum: 'Máximo',
+    average: 'Promedio',
+    total_vehicles: 'Total de vehículos analizados',
+    last_updated: 'Última actualización',
+    loading_error: 'Error cargando estadísticas de flota',
+    speed_classes: {
+      LOW: 'Lento (<140 km/h)',
+      MEDIUM: 'Normal (140-240 km/h)',
+      HIGH: 'Rápido (>240 km/h)'
+    }
   },
   vehiclestatss: {
     vehiclestatss: 'VehicleStatss',

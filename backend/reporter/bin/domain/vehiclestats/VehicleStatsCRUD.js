@@ -19,6 +19,9 @@ const WRITE_ROLES = ["VEHICLESTATS_WRITE"];
 const REQUIRED_ATTRIBUTES = [];
 const MATERIALIZED_VIEW_TOPIC = "emi-gateway-materialized-view-updates";
 
+// Development bypass for authentication
+const DISABLE_AUTH_FOR_DEVELOPMENT = process.env.DISABLE_AUTH_FOR_DEVELOPMENT === 'true';
+
 /**
  * Singleton instance
  * @type { VehicleStatsCRUD }
@@ -38,13 +41,23 @@ class VehicleStatsCRUD {
    *  { "CreateUser" : { "somegateway.someprotocol.mutation.CreateUser" : {fn: createUser$, instance: classInstance } } }
    */
   generateRequestProcessorMap() {
+    // Disable JWT validation for development
+    const jwtValidation = DISABLE_AUTH_FOR_DEVELOPMENT ? 
+      { roles: [], attributes: [] } : 
+      { roles: READ_ROLES, attributes: REQUIRED_ATTRIBUTES };
+    
+    const jwtValidationWrite = DISABLE_AUTH_FOR_DEVELOPMENT ? 
+      { roles: [], attributes: [] } : 
+      { roles: WRITE_ROLES, attributes: REQUIRED_ATTRIBUTES };
+
     return {
       'VehicleStats': {
-        "emigateway.graphql.query.ReporterVehicleStatsListing": { fn: instance.getReporterVehicleStatsListing$, instance, jwtValidation: { roles: READ_ROLES, attributes: REQUIRED_ATTRIBUTES } },
-        "emigateway.graphql.query.ReporterVehicleStats": { fn: instance.getVehicleStats$, instance, jwtValidation: { roles: READ_ROLES, attributes: REQUIRED_ATTRIBUTES } },
-        "emigateway.graphql.mutation.ReporterCreateVehicleStats": { fn: instance.createVehicleStats$, instance, jwtValidation: { roles: WRITE_ROLES, attributes: REQUIRED_ATTRIBUTES } },
-        "emigateway.graphql.mutation.ReporterUpdateVehicleStats": { fn: instance.updateVehicleStats$, jwtValidation: { roles: WRITE_ROLES, attributes: REQUIRED_ATTRIBUTES } },
-        "emigateway.graphql.mutation.ReporterDeleteVehicleStatss": { fn: instance.deleteVehicleStatss$, jwtValidation: { roles: WRITE_ROLES, attributes: REQUIRED_ATTRIBUTES } },
+        "emigateway.graphql.query.ReporterVehicleStatsListing": { fn: instance.getReporterVehicleStatsListing$, instance, jwtValidation },
+        "emigateway.graphql.query.ReporterVehicleStats": { fn: instance.getVehicleStats$, instance, jwtValidation },
+        "emigateway.graphql.query.ReporterFleetStatistics": { fn: instance.getFleetStatistics$, instance, jwtValidation },
+        "emigateway.graphql.mutation.ReporterCreateVehicleStats": { fn: instance.createVehicleStats$, instance, jwtValidation: jwtValidationWrite },
+        "emigateway.graphql.mutation.ReporterUpdateVehicleStats": { fn: instance.updateVehicleStats$, jwtValidation: jwtValidationWrite },
+        "emigateway.graphql.mutation.ReporterDeleteVehicleStatss": { fn: instance.deleteVehicleStatss$, jwtValidation: jwtValidationWrite },
       }
     }
   };
@@ -91,6 +104,24 @@ class VehicleStatsCRUD {
     );
   }
 
+  /**  
+   * Gets fleet statistics
+   *
+   * @param {*} args args
+   */
+  getFleetStatistics$({ args }, authToken) {
+    ConsoleLogger.i("VehicleStatsCRUD: Getting fleet statistics");
+    
+    return VehicleStatsDA.getFleetStatistics$().pipe(
+      tap(stats => ConsoleLogger.i("VehicleStatsCRUD: Fleet statistics retrieved", stats)),
+      mergeMap(rawResponse => CqrsResponseHelper.buildSuccessResponse$(rawResponse)),
+      catchError(err => {
+        ConsoleLogger.e("VehicleStatsCRUD: Error getting fleet statistics", err);
+        return iif(() => err.name === 'MongoTimeoutError', throwError(err), CqrsResponseHelper.handleError$(err));
+      })
+    );
+  }
+
 
   /**
   * Create a VehicleStats
@@ -102,10 +133,15 @@ class VehicleStatsCRUD {
       ...args.input,
     };
 
-    return VehicleStatsDA.createVehicleStats$(aggregateId, input, authToken.preferred_username).pipe(
+    // Use mock authToken for development
+    const effectiveAuthToken = DISABLE_AUTH_FOR_DEVELOPMENT ? 
+      { preferred_username: 'dev-user' } : 
+      authToken;
+
+    return VehicleStatsDA.createVehicleStats$(aggregateId, input, effectiveAuthToken.preferred_username).pipe(
       mergeMap(aggregate => forkJoin(
         CqrsResponseHelper.buildSuccessResponse$(aggregate),
-        eventSourcing.emitEvent$(instance.buildAggregateMofifiedEvent('CREATE', 'VehicleStats', aggregateId, authToken, aggregate), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY }),
+        eventSourcing.emitEvent$(instance.buildAggregateMofifiedEvent('CREATE', 'VehicleStats', aggregateId, effectiveAuthToken, aggregate), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY }),
         broker.send$(MATERIALIZED_VIEW_TOPIC, `ReporterVehicleStatsModified`, aggregate)
       )),
       map(([sucessResponse]) => sucessResponse),
@@ -119,10 +155,15 @@ class VehicleStatsCRUD {
   updateVehicleStats$({ root, args, jwt }, authToken) {
     const { id, input, merge } = args;
 
-    return (merge ? VehicleStatsDA.updateVehicleStats$ : VehicleStatsDA.replaceVehicleStats$)(id, input, authToken.preferred_username).pipe(
+    // Use mock authToken for development
+    const effectiveAuthToken = DISABLE_AUTH_FOR_DEVELOPMENT ? 
+      { preferred_username: 'dev-user' } : 
+      authToken;
+
+    return (merge ? VehicleStatsDA.updateVehicleStats$ : VehicleStatsDA.replaceVehicleStats$)(id, input, effectiveAuthToken.preferred_username).pipe(
       mergeMap(aggregate => forkJoin(
         CqrsResponseHelper.buildSuccessResponse$(aggregate),
-        eventSourcing.emitEvent$(instance.buildAggregateMofifiedEvent(merge ? 'UPDATE_MERGE' : 'UPDATE_REPLACE', 'VehicleStats', id, authToken, aggregate), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY }),
+        eventSourcing.emitEvent$(instance.buildAggregateMofifiedEvent(merge ? 'UPDATE_MERGE' : 'UPDATE_REPLACE', 'VehicleStats', id, effectiveAuthToken, aggregate), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY }),
         broker.send$(MATERIALIZED_VIEW_TOPIC, `ReporterVehicleStatsModified`, aggregate)
       )),
       map(([sucessResponse]) => sucessResponse),
@@ -136,10 +177,16 @@ class VehicleStatsCRUD {
    */
   deleteVehicleStatss$({ root, args, jwt }, authToken) {
     const { ids } = args;
+
+    // Use mock authToken for development
+    const effectiveAuthToken = DISABLE_AUTH_FOR_DEVELOPMENT ? 
+      { preferred_username: 'dev-user' } : 
+      authToken;
+
     return forkJoin(
       VehicleStatsDA.deleteVehicleStatss$(ids),
       from(ids).pipe(
-        mergeMap(id => eventSourcing.emitEvent$(instance.buildAggregateMofifiedEvent('DELETE', 'VehicleStats', id, authToken, {}), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY })),
+        mergeMap(id => eventSourcing.emitEvent$(instance.buildAggregateMofifiedEvent('DELETE', 'VehicleStats', id, effectiveAuthToken, {}), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY })),
         toArray()
       )
     ).pipe(

@@ -1,14 +1,20 @@
 "use strict";
 
 let mongoDB = undefined;
-const { map, mapTo } = require("rxjs/operators");
+const { map, mapTo, mergeMap, tap, catchError } = require("rxjs/operators");
 const { of, Observable, defer } = require("rxjs");
 
 const { CustomError } = require("@nebulae/backend-node-tools").error;
+const { ConsoleLogger } = require('@nebulae/backend-node-tools').log;
 
 const CollectionName = 'VehicleStats';
 const FleetStatisticsCollectionName = 'FleetStatistics';
 const ProcessedVehiclesCollectionName = 'ProcessedVehicles';
+
+// Constants for the collections
+const COLLECTION_VEHICLE_STATS = CollectionName;
+const COLLECTION_FLEET_STATISTICS = FleetStatisticsCollectionName;
+const COLLECTION_PROCESSED_VEHICLES = ProcessedVehiclesCollectionName;
 
 class VehicleStatsDA {
   static start$(mongoDbInstance) {
