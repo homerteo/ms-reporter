@@ -49,7 +49,7 @@ function getResponseFromBackEnd$(response) {
 function sendToBackEndHandler$(root, OperationArguments, context, requiredRoles, operationType, aggregateName, methodName, timeout = 2000) {
     // Bypass authentication for development
     if (DISABLE_AUTH_FOR_DEVELOPMENT) {
-        console.log(`🔧 Development mode: Bypassing authentication for ${methodName}`);
+        console.log(`Development mode: Bypassing authentication for ${methodName}`);
         
         // Create a mock JWT context for development
         const mockContext = {
@@ -131,7 +131,7 @@ module.exports = {
                 (payload, variables, context, info) => {
                     // Bypass authentication for development
                     if (DISABLE_AUTH_FOR_DEVELOPMENT) {
-                        console.log(`🔧 Development mode: Bypassing subscription authentication`);
+                        console.log(`Development mode: Bypassing subscription authentication`);
                         return pubsub.asyncIterator("ReporterVehicleStatsModified");
                     }
                     

@@ -122,6 +122,7 @@ class CqrsService {
  */
   verifyRequest$(aggregateType, request) {
     const { fn, instance, jwtValidation = {} } = this.requestProcessMap[aggregateType][request.type];
+    
     let authToken = this.getJwtToken(request.data.jwt);
     return of(request).pipe(
       tap(r => {
@@ -136,6 +137,7 @@ class CqrsService {
         const missingAttributes = (jwtValidation.attributes || [])
           .filter(attribute => authToken[attribute] === undefined);
         if (missingAttributes.length > 0) {
+          ConsoleLogger.d('JWT DEBBUGER', request.data.jwt, process.env[AVAILABLE_JWT_LIST], process.env['JWT_PUBLIC_KEY']);
           throw new CustomError(`Missing JWT attributes: ${JSON.stringify(missingAttributes)}`);
         }
       }),

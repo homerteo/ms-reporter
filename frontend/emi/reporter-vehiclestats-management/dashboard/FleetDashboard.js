@@ -294,7 +294,7 @@ const FleetDashboard = () => {
                         <Grid item xs={12}>
                             <Box mb={2}>
                                 <Chip 
-                                    label="📊 Mostrando datos de demostración"
+                                    label="Mostrando datos de demostración"
                                     color="secondary"
                                     variant="outlined"
                                 />
