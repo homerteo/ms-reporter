@@ -122,7 +122,6 @@ class CqrsService {
  */
   verifyRequest$(aggregateType, request) {
     const { fn, instance, jwtValidation = {} } = this.requestProcessMap[aggregateType][request.type];
-    
     let authToken = this.getJwtToken(request.data.jwt);
     return of(request).pipe(
       tap(r => {
